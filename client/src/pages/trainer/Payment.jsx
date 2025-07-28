@@ -16,6 +16,7 @@ const Payment = () => {
   const [sessionId, setSessionId] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [candidates, setCandidates] = useState([]);
+  const [userRole, setUserRole] = useState("");
 
   const API = "http://localhost:7081/Bio";
 
@@ -34,14 +35,18 @@ const Payment = () => {
   };
 
   const fetchSessionUser = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user?.userName) {
-      setCollectedBy(user.userName); // ✅ send this in collectedby
-    }
-    if (user?.sessionId) {
-      setSessionId(user.sessionId); // ✅ send this in headers only
-    }
-  };
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (user?.userName) {
+    setCollectedBy(user.userName);
+  }
+  if (user?.sessionId) {
+    setSessionId(user.sessionId);
+  }
+  if (user?.role) {
+    setUserRole(user.role); // <-- Add useState for this
+  }
+};
+
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
@@ -119,6 +124,7 @@ const Payment = () => {
       await axios.post(`${API}/Addpayment`, payload, {
         headers: {
           "X-Session-ID": sessionId, // ✅ sent only in headers
+          role: userRole,
         },
       });
 

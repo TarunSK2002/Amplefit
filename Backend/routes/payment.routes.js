@@ -134,46 +134,13 @@
 
 // module.exports = router;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const express = require("express");
 const router = express.Router();
-const db = require("../db"); // Your DB connection
-const sendMail = require("../utils/sendMail"); // Mail utility
+const db = require("../db");
+const sendMail = require("../utils/sendMail");
+const { sendPaymentNotificationToAdmin } = require("../utils/sendMail");
 
-// Get all payments
+// ------------------------- GET All Payments ------------------------- //
 router.get("/GetAllpayment", async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -185,11 +152,13 @@ router.get("/GetAllpayment", async (req, res) => {
   }
 });
 
-// Add new payment
+// ------------------------- Add Payment ------------------------- //
 // router.post("/Addpayment", async (req, res) => {
 //   const {
 //     CandidateId,
+//     Name,
 //     ServiceId,
+//     BalanceAmount,
 //     PaymentAmount,
 //     Paymentmode,
 //     collectedby,
@@ -197,27 +166,31 @@ router.get("/GetAllpayment", async (req, res) => {
 //     UpdatedDate,
 //   } = req.body;
 
+//   const role = req.headers["role"]; // ✅ Get role from frontend headers
 //   const sessionId = req.headers["x-session-id"] || "unknown";
-//   const connection = await db.getConnection();
+//   const paymentReceiptNo = `RCPT-${Date.now()}`;
+//   const updatedBalance = BalanceAmount - PaymentAmount;
 
+//   // Input validation
+//   if (
+//     !CandidateId ||
+//     !Name ||
+//     !ServiceId ||
+//     !BalanceAmount ||
+//     !PaymentAmount ||
+//     !Paymentmode ||
+//     !collectedby ||
+//     !CreatedDate ||
+//     !UpdatedDate
+//   ) {
+//     return res.status(400).json({ error: "Missing required fields" });
+//   }
+
+//   const connection = await db.getConnection();
 //   try {
 //     await connection.beginTransaction();
 
-//     // 1. Fetch candidate balance and name
-//     const [candidateRows] = await connection.query(
-//       "SELECT name, balanceAmount FROM Candidate WHERE candidateId = ?",
-//       [CandidateId]
-//     );
-
-//     if (candidateRows.length === 0) {
-//       throw new Error("Candidate not found");
-//     }
-
-//     const currentBalance = candidateRows[0].balanceAmount || 0;
-//     const updatedBalance = currentBalance - PaymentAmount;
-//     const name = candidateRows[0].name;
-
-//     // 2. Insert payment record
+//     // Insert payment
 //     await connection.query(
 //       `INSERT INTO Payment (
 //         candidateId, name, serviceId, balanceAmount,
@@ -226,7 +199,7 @@ router.get("/GetAllpayment", async (req, res) => {
 //       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 //       [
 //         CandidateId,
-//         name,
+//         Name,
 //         ServiceId,
 //         updatedBalance,
 //         PaymentAmount,
@@ -235,17 +208,17 @@ router.get("/GetAllpayment", async (req, res) => {
 //         CreatedDate,
 //         UpdatedDate,
 //         sessionId,
-//         `RCPT-${Date.now()}`,
+//         paymentReceiptNo,
 //       ]
 //     );
 
-//     // 3. Update candidate balance
+//     // Update candidate balance
 //     await connection.query(
 //       `UPDATE Candidate SET balanceAmount = ? WHERE candidateId = ?`,
 //       [updatedBalance, CandidateId]
 //     );
 
-//     // 4. If balance is 0, update paymentStatus to "Completed"
+//     // If balance cleared, update paymentStatus
 //     if (updatedBalance <= 0) {
 //       await connection.query(
 //         `UPDATE Candidate SET paymentStatus = 'Completed' WHERE candidateId = ?`,
@@ -255,58 +228,41 @@ router.get("/GetAllpayment", async (req, res) => {
 
 //     await connection.commit();
 
-//     // ✅ Send mail to admin if collected by a trainer
-//     if (collectedby && collectedby.toLowerCase().includes("trainer")) {
-//       const emailSubject = "Trainer Payment Collection Alert";
-
-//       const emailBody = `
-//       A payment has been collected by a trainer.
-
-//       Candidate ID  : ${CandidateId}
-//       Candidate Name: ${name}
-//       Service ID     : ${ServiceId}
-//       Payment Amount : ₹${PaymentAmount}
-//       Remaining Bal. : ₹${updatedBalance}
-//       Payment Mode   : ${Paymentmode}
-//       Collected By   : ${collectedby}
-//       Date           : ${CreatedDate} `;
-
-//       await sendMail(emailSubject, emailBody);
+//     // ✅ Send Email if role is trainer
+//     if (role?.toLowerCase() === "trainer") {
+//       try {
+//         await sendPaymentNotificationToAdmin(collectedby);
+//       } catch (mailErr) {
+//         console.warn("Failed to send login notification:", mailErr.message);
+//       }
 //     }
 
-//     res.json({
-//       success: true,
-//       message: "Payment recorded, balance and status updated.",
-//     });
+//     res.status(200).json({ message: "Payment added successfully." });
 //   } catch (err) {
 //     await connection.rollback();
-//     res.status(500).json({ error: err.message });
+//     console.error("❌ Addpayment Error:", err);
+//     res.status(500).json({ error: "Failed to add payment." });
 //   } finally {
 //     connection.release();
 //   }
 // });
 
-router.post("/Addpayment", async (req, res) => {
+router.post("/AddPayment", async (req, res) => {
   const {
     CandidateId,
-    Name,
-    ServiceId,
-    BalanceAmount,
     PaymentAmount,
     Paymentmode,
     collectedby,
-    role,
     CreatedDate,
     UpdatedDate,
   } = req.body;
 
+  const role = req.headers["role"];
   const sessionId = req.headers["x-session-id"] || "unknown";
   const paymentReceiptNo = `RCPT-${Date.now()}`;
-  const updatedBalance = BalanceAmount - PaymentAmount;
 
   if (
     !CandidateId ||
-    !ServiceId ||
     !PaymentAmount ||
     !Paymentmode ||
     !collectedby ||
@@ -320,7 +276,20 @@ router.post("/Addpayment", async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    // Insert into Payment
+    // 🔍 Get candidate details
+    const [candidateRows] = await connection.query(
+      `SELECT name, serviceId, balanceAmount FROM Candidate WHERE candidateId = ?`,
+      [CandidateId]
+    );
+
+    if (!candidateRows.length) {
+      throw new Error("Candidate not found");
+    }
+
+    const { name, serviceId, balanceAmount } = candidateRows[0];
+    const updatedBalance = balanceAmount - PaymentAmount;
+
+    // 💾 Insert payment
     await connection.query(
       `INSERT INTO Payment (
         candidateId, name, serviceId, balanceAmount,
@@ -329,8 +298,8 @@ router.post("/Addpayment", async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         CandidateId,
-        Name,
-        ServiceId,
+        name,
+        serviceId,
         updatedBalance,
         PaymentAmount,
         Paymentmode,
@@ -342,13 +311,12 @@ router.post("/Addpayment", async (req, res) => {
       ]
     );
 
-    // Update candidate balance
+    // 🔁 Update candidate balance and status
     await connection.query(
       `UPDATE Candidate SET balanceAmount = ? WHERE candidateId = ?`,
       [updatedBalance, CandidateId]
     );
 
-    // Mark payment as completed if balance is 0
     if (updatedBalance <= 0) {
       await connection.query(
         `UPDATE Candidate SET paymentStatus = 'Completed' WHERE candidateId = ?`,
@@ -358,38 +326,34 @@ router.post("/Addpayment", async (req, res) => {
 
     await connection.commit();
 
-    // ✅ Email Notification (only if trainer)
+    // 📧 Send Email to Admin if role is trainer
     if (role?.toLowerCase() === "trainer") {
-      const emailSubject = `Trainer Payment Alert: ${collectedby}`;
-      const emailBody = `
-        <h3>Trainer Payment Notification</h3>
-        <p>A payment was collected by a trainer.</p>
-        <ul>
-          <li><strong>Candidate ID:</strong> ${CandidateId}</li>
-          <li><strong>Candidate Name:</strong> ${Name}</li>
-          <li><strong>Service ID:</strong> ${ServiceId}</li>
-          <li><strong>Amount Paid:</strong> ₹${PaymentAmount}</li>
-          <li><strong>Remaining Balance:</strong> ₹${updatedBalance}</li>
-          <li><strong>Payment Mode:</strong> ${Paymentmode}</li>
-          <li><strong>Collected By:</strong> ${collectedby}</li>
-          <li><strong>Date:</strong> ${CreatedDate}</li>
-        </ul>
-      `;
-
-      await sendMail(emailSubject, emailBody);
+      try {
+        await sendPaymentNotificationToAdmin({
+          candidateId: CandidateId,
+          name,
+          serviceId,
+          balanceAmount: updatedBalance,
+          paymentAmount: PaymentAmount,
+          paymentmode: Paymentmode,
+          collectedby,
+        });
+      } catch (mailErr) {
+        console.warn("Failed to send payment notification:", mailErr.message);
+      }
     }
 
     res.status(200).json({ message: "Payment added successfully." });
   } catch (err) {
     await connection.rollback();
-    console.error("Addpayment Error:", err);
+    console.error("❌ AddPayment Error:", err);
     res.status(500).json({ error: "Failed to add payment." });
   } finally {
     connection.release();
   }
 });
 
-// Get candidate by ID
+// ------------------------- Get Candidate by ID ------------------------- //
 router.get("/GetAllcandidatebyID", async (req, res) => {
   const { id } = req.query;
 
@@ -411,7 +375,7 @@ router.get("/GetAllcandidatebyID", async (req, res) => {
   }
 });
 
-// Get service by ID
+// ------------------------- Get Service by ID ------------------------- //
 router.get("/GetbyidServicetable", async (req, res) => {
   const { id } = req.query;
 
@@ -429,6 +393,25 @@ router.get("/GetbyidServicetable", async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ------------------------- Test Mail ------------------------- //
+router.get("/TestMail", async (req, res) => {
+  try {
+    const subject = "✅ Test Mail from Node.js";
+    const htmlBody = `
+      <h3>This is a test email</h3>
+      <p>If you're seeing this, the email system is working correctly.</p>
+      <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+    `;
+
+    await sendMail(subject, htmlBody);
+
+    res.status(200).json({ message: "Test email sent successfully." });
+  } catch (error) {
+    console.error("❌ TestMail Error:", error.message);
+    res.status(500).json({ error: "Failed to send test email." });
   }
 });
 

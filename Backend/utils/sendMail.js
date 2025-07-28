@@ -1,63 +1,111 @@
-// utils/sendMail.js
+
+
 const nodemailer = require("nodemailer");
 
+// Configure transporter once
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "murugatarun9787@gmail.com",     // your admin email
-    pass: "jafb gicm wjpv kpmq", // use App Password or SMTP password
+    user: "vimalajames2204@gmail.com",
+    pass: "rxqw mgbr ozkg wjhp", // App password
   },
 });
 
-const sendMail = async (subject, text) => {
+const ADMIN_EMAIL = "tarunsivakumar03@gmail.com";
+
+// 1. Trainer Login Notification
+const sendLoginNotificationToAdmin = async (login) => {
   try {
-    await transporter.sendMail({
-      from: 'murugatarun9787@gmail.com',
-      to: "tarunsivakumar03@gmail.com", // 👈 Replace with actual admin email
-      subject,
-      text,
-    });
-    console.log("✅ Mail sent to admin");
-  } catch (error) {
-    console.error("❌ Mail error:", error);
+    const mailOptions = {
+      from: '"GymManagement" <vimalajames2204@gmail.com>',
+      to: ADMIN_EMAIL,
+      subject: "Trainer Login Notification",
+      html: `
+        <h2>Trainer Login Alert 🚨</h2>
+        <p><strong>Trainer Name:</strong> ${login.UserName}</p>
+        <p><strong>Login ID:</strong> ${login.LoginId}</p>
+        <p><strong>Login Time:</strong> ${new Date().toLocaleString()}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Login email sent to admin.");
+  } catch (err) {
+    console.error("❌ Login Email Error:", err);
   }
 };
 
-module.exports = sendMail;
+// 2. Candidate Enrollment Notification
+const sendCandidateEnrollmentNotification = async (candidate) => {
+  try {
+    const mailOptions = {
+      from: '"GymManagement" <vimalajames2204@gmail.com>',
+      to: ADMIN_EMAIL,
+      subject: "New Candidate Enrolled by Trainer",
+      html: `
+        <h2>🎉 New Candidate Enrollment</h2>
+        <p><strong>Name:</strong> ${candidate.name}</p>
+        <p><strong>Mobile:</strong> ${candidate.mobileNumber}</p>
+        <p><strong>Enrolled By:</strong> $  {collectedBy}</p>
+        <p><strong>Date of Joining:</strong> ${candidate.doj}</p>
+        <p><strong>Package:</strong> ${candidate.packageName} - ₹${
+        candidate.packageAmount
+      }</p>
+        <p><strong>Branch:</strong> ${candidate.branchName}</p>
+        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Candidate enrollment email sent.");
+  } catch (err) {
+    console.error("❌ Enrollment Email Error:", err);
+  }
+};
+
+// 3. Payment Collection Notification
+
+const sendPaymentNotificationToAdmin = async (payment) => {
+  try {
+    const mailOptions = {
+      from: '"GymManagement" <vimalajames2204@gmail.com>',
+      to: ADMIN_EMAIL,
+      subject: "Payment Collected by Trainer 💰",
+      html: `
+        <h2>Payment Collected</h2>
+        <p><strong>Candidate Name:</strong> ${payment.name}</p>
+        <p><strong>Candidate ID:</strong> ${payment.candidateId}</p>
+        <p><strong>Amount Paid:</strong> ₹${payment.paymentAmount}</p>
+        <p><strong>Payment Mode:</strong> ${payment.paymentmode}</p>
+        <p><strong>Collected By:</strong> ${payment.collectedby}</p>
+        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    // ✅ Correct log with destructured fields
+    console.log({
+      candidateId: payment.candidateId,
+      name: payment.name,
+      paymentAmount: payment.paymentAmount,
+      paymentmode: payment.paymentmode,
+      collectedby: payment.collectedby,
+      role: payment.role || "trainer", // fallback to 'trainer' if undefined
+    });
+
+    console.log("📩 Payment email sent.");
+  } catch (err) {
+    console.error("❌ Payment Email Error:", err);
+  }
+};
 
 
 
+// Export all functions
+module.exports = {
+  sendLoginNotificationToAdmin,
+  sendCandidateEnrollmentNotification,
+  sendPaymentNotificationToAdmin,
+};
 
-
-
-
-// const nodemailer = require("nodemailer");
-
-// const transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: process.env.ADMIN_EMAIL,     // ✅ Store sensitive info in .env
-//     pass: process.env.ADMIN_EMAIL_PASS,
-//   },
-// });
-
-// /**
-//  * Sends an email to the admin
-//  * @param {string} subject - Email subject
-//  * @param {string} text - Plain text email body
-//  */
-// const sendMail = async (subject, text) => {
-//   try {
-//     await transporter.sendMail({
-//       from: `"Training App" <${process.env.ADMIN_EMAIL}>`,
-//       to: process.env.ADMIN_RECEIVER_EMAIL, // ✅ Configurable target
-//       subject,
-//       text,
-//     });
-//     console.log("✅ Mail sent to admin");
-//   } catch (error) {
-//     console.error("❌ Mail error:", error.message);
-//   }
-// };
-
-// module.exports = sendMail;

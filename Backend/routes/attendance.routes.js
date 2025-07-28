@@ -8,7 +8,7 @@ const { port } = require("serialport");
 
 // const { getSerialPort } = require("../serial");
 const axios = require("axios"); // Ensure axios is installed for Arduino request
-const port = require("../utils/serial");
+// const port = require("../utils/serial");
 // const { Op } = require("sequelize");
 // Get all attendance records
 router.get("/GetAllAttendance", async (req, res) => {
@@ -106,54 +106,6 @@ router.get("/GetAllAttendance", async (req, res) => {
 //   }
 // });
 
-
-
-
-
-
-
-
-
-
-
-console.log("✅ attendance.routes.js loaded");
-
-router.post("/VerifyAttendanceByCandidateId", exports.verifyAttendanceByCandidateId);
-
-module.exports = router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 router.post("/VerifyAttendanceByFingerprintId", async (req, res) => {
   const { fingerPrintID } = req.body;
 
@@ -217,3 +169,12 @@ router.post("/VerifyAttendanceByFingerprintId", async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 });
+
+
+
+console.log("✅ attendance.routes.js loaded");
+
+//router.post("/VerifyAttendanceByCandidateId", exports.verifyAttendanceByCandidateId);
+
+module.exports = router;
+
