@@ -7,10 +7,14 @@ const formatDate = (dateStr) => {
   return format(new Date(dateStr), "yyyy-MM-dd"); // or your desired format
 };
 
-// GET all candidates
 router.get("/GetAllcandidate", async (req, res) => {
+  const includeInactive = req.query.includeInactive === "true";
+  const query = includeInactive
+    ? "SELECT * FROM Candidate"
+    : "SELECT * FROM Candidate WHERE isActive = 1";
+
   try {
-    const [rows] = await db.query("SELECT * FROM Candidate");
+    const [rows] = await db.query(query);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -25,7 +29,7 @@ router.post("/AddOrUpdateCandidate", async (req, res) => {
     const createdDate = formatDate(c.createdDate || new Date());
 
     if (c.candidateId && c.candidateId !== 0) {
-      // Update existing candidate
+      // Update
       await db.query(
         `UPDATE Candidate SET 
           name = ?, gender = ?, address = ?, mobileNumber = ?, doj = ?, 
@@ -55,13 +59,14 @@ router.post("/AddOrUpdateCandidate", async (req, res) => {
         ]
       );
     } else {
-      // Insert new candidate
+      // Insert
       await db.query(
-        `INSERT INTO Candidate (name, gender, address, mobileNumber, doj, 
+        `INSERT INTO Candidate (
+          name, gender, address, mobileNumber, doj, 
           serviceId, packageId, branchId, packageMonths, packageAmount, 
           balanceAmount, fromDate, toDate, paymentStatus, 
-          fingerPrintID, isActive, createdDate) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          fingerPrintID, isActive, createdDate
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           c.name,
           c.gender,
@@ -81,29 +86,105 @@ router.post("/AddOrUpdateCandidate", async (req, res) => {
           c.isActive,
           createdDate,
         ]
-      );
+      ); // Send notification email only for new candidate
+      if (c.role === "trainer") {
+        const [branch] = await db.query(
+          "SELECT branchName FROM Branch WHERE branchId = ?",
+          [c.branchId]
+        );
+        const [packageInfo] = await db.query(
+          "SELECT packageName FROM Package WHERE packageId = ?",
+          [c.packageId]
+        );
 
-      // Send notification email only for new candidate
-      const [branch] = await db.query("SELECT branchName FROM Branch WHERE branchId = ?", [c.branchId]);
-      const [packageInfo] = await db.query("SELECT packageName FROM Package WHERE packageId = ?", [c.packageId]);
+        const enrichedCandidate = {
+          name: c.name,
+          mobileNumber: c.mobileNumber,
+          createdBy: "Trainer", // or include trainerName if you want
+          doj: formatDate(c.doj),
+          packageName: packageInfo[0]?.packageName || "N/A",
+          packageAmount: c.packageAmount,
+          branchName: branch[0]?.branchName || "N/A",
+        };
 
-      const enrichedCandidate = {
-        name: c.name,
-        mobileNumber: c.mobileNumber,
-        createdBy: c.createdBy || "Unknown Trainer",
-        doj: formatDate(c.doj),
-        packageName: packageInfo[0]?.packageName || "N/A",
-        packageAmount: c.packageAmount,
-        branchName: branch[0]?.branchName || "N/A",
-      };
-
-      await sendCandidateEnrollmentNotification(enrichedCandidate);
+        await sendCandidateEnrollmentNotification(enrichedCandidate);
+      }
     }
 
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ Error in AddOrUpdateCandidate:", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// // DELETE candidate by ID
+// router.delete("/DeleteCandidate/:id", async (req, res) => {
+//   const candidateId = req.params.id;
+
+//   try {
+//     const [result] = await db.query(
+//       "DELETE FROM Candidate WHERE candidateId = ?",
+//       [candidateId]
+//     );
+
+//     if (result.affectedRows === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Candidate not found" });
+//     }
+
+//     res.json({ success: true, message: "Candidate deleted successfully" });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
+
+// // SOFT DELETE candidate by setting isActive = 0
+// router.put("/DeleteCandidate/:id", async (req, res) => {
+//   const candidateId = req.params.id;
+
+//   try {
+//     const [result] = await db.query(
+//       "UPDATE Candidate SET isActive = 0 WHERE candidateId = ?",
+//       [candidateId]
+//     );
+
+//     if (result.affectedRows === 0) {
+//       return res.status(404).json({ success: false, message: "Candidate not found" });
+//     }
+
+//     res.json({ success: true, message: "Candidate marked as inactive (soft deleted)" });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
+
+// DELETE /DeleteCandidate/:id
+router.delete("/DeleteCandidate/:id", async (req, res) => {
+  const candidateId = req.params.id;
+
+  try {
+    // Step 1: Delete from AttendanceTable
+    await db.query("DELETE FROM attendance WHERE CandidateId = ?", [
+      candidateId,
+    ]);
+
+    // Step 2: Delete from CandidateEnrollment
+    await db.query("DELETE FROM candidate WHERE CandidateId = ?", [
+      candidateId,
+    ]);
+
+    res
+      .status(200)
+      .json({
+        message:
+          "Candidate and related records deleted successfully (Payment retained).",
+      });
+  } catch (error) {
+    console.error("❌ Deletion Error:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to delete candidate. See logs for more info." });
   }
 });
 

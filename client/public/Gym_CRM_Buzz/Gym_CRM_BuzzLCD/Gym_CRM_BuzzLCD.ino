@@ -40,7 +40,18 @@ void loop() {
       lcd.setCursor(0, 1);
       lcd.print("    Workout");
       Serial.println("Attendance Marked");
-      delay(2000); // show the message for 2 seconds
+      delay(3000); // show the message for 3 seconds
+      showReadingMessage();
+    }
+    else if (command == "DUPLICATE") {
+      buzz(200);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Attendance Marked");
+      lcd.setCursor(0, 1);
+      lcd.print(" Aleardy ");
+      Serial.println("Attendance Marked Aleardy");
+      delay(3000); // show the message for 3 seconds
       showReadingMessage();
     }
     else {

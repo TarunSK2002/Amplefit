@@ -12,8 +12,11 @@ const fingerprintRoutes = require("./routes/fingerprint.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const reportRoutes = require("./routes/report.routes");
 const attendanceRoutes = require("./routes/attendance.routes");
-const { initializeSerialPort  } = require("./utils/serial");
-initializeSerialPort ();
+const dashboardRoutes = require("./routes/dashboard.routes");
+const trainerdashboardRoutes = require("./routes/trainerdashboard.routes");
+
+// const { initializeSerialPort  } = require("./utils/serial");
+// initializeSerialPort ();
 
 
 app.use(cors({
@@ -31,14 +34,16 @@ app.use("/Bio", fingerprintRoutes);
 app.use("/Bio", paymentRoutes);
 app.use("/Bio", reportRoutes);
 app.use("/Bio", attendanceRoutes);
+app.use("/Bio", dashboardRoutes);
+app.use("/Bio", trainerdashboardRoutes);
 
 const PORT = process.env.PORT || 7081;
-// app.listen(PORT, () => {
-//   console.log(`Server running on http://localhost:${PORT}`);
-// });
-
-initializeSerialPort().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// initializeSerialPort().then(() => {
+//   app.listen(PORT, () => {
+//     console.log(`Server running on http://localhost:${PORT}`);
+//   });
+// });

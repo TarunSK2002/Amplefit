@@ -33,20 +33,22 @@ router.get("/GetTrainerReportByDate", async (req, res) => {
 });
 
 // ✅ Attendance Report
-router.get("/GetAttendanceReportByDate", async (req, res) => {
+router.get('/GetAttendanceReportByDate', async (req, res) => {
   const { fromDate, toDate } = req.query;
+
   try {
-    const [rows] = await db.execute(
+    const [rows] = await pool.execute(
       `SELECT a.*, c.name AS candidateName
        FROM attendance a
-       JOIN candidate c ON a.candidateId = c.id
+       JOIN candidate c ON a.candidateId = c.candidateId
        WHERE a.attendanceDate BETWEEN ? AND ?`,
       [fromDate, toDate]
     );
+
     res.json(rows);
   } catch (err) {
-    console.error("Attendance Report Error:", err.message || err);
-    res.status(500).send("Server Error");
+    console.error("❌ SQL Error:", err);  // Log the actual SQL or connection error
+    res.status(500).send("Internal Server Error");
   }
 });
 

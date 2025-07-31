@@ -34,17 +34,23 @@ const Dashboard = () => {
   const [candidates, setCandidates] = useState([]);
   const [payments, setPayments] = useState([]);
   const [statsData, setStatsData] = useState([]);
+  const [lastMonthRevenue, setLastMonthRevenue] = useState(0);
+  const [currentMonthRevenue, setCurrentMonthRevenue] = useState(0);
 
   useEffect(() => {
     localStorage.setItem("currentMode", "attendance");
     fetchTrainers();
     fetchCandidates();
     fetchPayments();
+    fetchLastMonthRevenue();
+    fetchCurrentMonthRevenue();
+
   }, []);
+
 
   const fetchTrainers = async () => {
     try {
-      const { data } = await axios.get("https://localhost:7081/Bio/GetAlltrainer");
+      const { data } = await axios.get("http://localhost:7081/Bio/GetAlltrainer");
       setTrainers(data || []);
     } catch (e) {
       console.error("Trainer fetch error:", e);
@@ -53,7 +59,7 @@ const Dashboard = () => {
 
   const fetchCandidates = async () => {
     try {
-      const { data } = await axios.get("https://localhost:7081/Bio/GetAllcandidate");
+      const { data } = await axios.get("http://localhost:7081/Bio/GetAllcandidate");
       setCandidates(data || []);
     } catch (e) {
       console.error("Candidate fetch error:", e);
@@ -62,19 +68,41 @@ const Dashboard = () => {
 
   const fetchPayments = async () => {
     try {
-      const { data } = await axios.get("https://localhost:7081/Bio/GetAllpayment");
+      const { data } = await axios.get("http://localhost:7081/Bio/GetAllpayment");
       setPayments(data || []);
     } catch (e) {
       console.error("Payment fetch error:", e);
     }
   };
 
+
+
+  const fetchLastMonthRevenue = async () => {
+    try {
+      const { data } = await axios.get("http://localhost:7081/Bio/GetTotalPaymentLastMonth");
+      setLastMonthRevenue(data.total || 0);
+    } catch (e) {
+      console.error("Last month revenue fetch error:", e);
+    }
+  };
+  const fetchCurrentMonthRevenue = async () => {
+    try {
+      const { data } = await axios.get("http://localhost:7081/Bio/GetTotalPaymentCurrentMonth");
+      setCurrentMonthRevenue(data.total_payment || 0);
+    } catch (e) {
+      console.error("Current month revenue fetch error:", e);
+    }
+  };
+
+
+
   useEffect(() => {
     const rev = {};
     payments.forEach((p) => {
       const m = formatMonth(p.createdDate);
       if (!m) return;
-      rev[m] = (rev[m] || 0) + (p.paymentAmount || 0);
+      rev[m] = (rev[m] || 0) + parseFloat(p.paymentAmount || 0);
+
     });
 
     const arr = Object.entries(rev).map(([month, revenue]) => {
@@ -111,22 +139,38 @@ const Dashboard = () => {
             title="Active Trainers"
             icon={<UserPlus />}
             value={trainers.filter((t) => t.isActive).length}
-            change={`+12%`}
+          // change={`+12%`}
           />
           <StatCard
             color="success"
             title="Total Candidates"
             icon={<Users />}
             value={candidates.length}
-            change={`+18%`}
+          // change={`+18%`}
           />
-          <StatCard
+          {/* <StatCard
             color="warning"
             title="Monthly Revenue"
             icon={<CreditCard />}
             value={`₹${currentStats ? currentStats.revenue : 0}`}
-            change="+25%"
+            // change="+25%"
+          /> */}
+          {/* <StatCard
+            color="warning"
+            title="Monthly Revenue"
+            icon={<CreditCard />}
+            value={`₹${lastMonthRevenue.toLocaleString()}`}
+            change="" // You can optionally compute a % change vs previous month
+          /> */}
+          <StatCard
+            color="warning"
+            title="Monthly Revenue"
+            icon={<CreditCard />}
+            value={`₹${currentMonthRevenue.toLocaleString()}`}
+            change="" // Optional
           />
+
+
         </div>
 
         <div className="row g-4 mb-4">

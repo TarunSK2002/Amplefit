@@ -16,6 +16,7 @@ const CandidateEnrollment = () => {
   const [packages, setPackages] = useState([]);
   const [branches, setBranches] = useState([]);
   const [fingerprintId, setFingerprintId] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -36,11 +37,11 @@ const CandidateEnrollment = () => {
 
   const baseURL = "http://localhost:7081/Bio";
 
-  const generateCandidateId = () => {
-    const prefix = "CAND";
-    const timestamp = Date.now().toString().slice(-4);
-    return `${prefix}${timestamp}`;
-  };
+  // const generateCandidateId = () => {
+  //   const prefix = "CAND";
+  //   const timestamp = Date.now().toString().slice(-4);
+  //   return `${prefix}${timestamp}`;
+  // };
 
   useEffect(() => {
     // Set default mode on load
@@ -180,18 +181,20 @@ const CandidateEnrollment = () => {
       alert("❌ Failed to save fingerprint to database");
     }
   };
+  const user = JSON.parse(localStorage.getItem("user"));
 
   const handleAddCandidate = async () => {
+    try {
     const payload = {
-      candidateId: 0,
+      candidateId: selectedCandidateId || "",
       name: formData.name,
       gender: formData.gender,
       address: formData.address,
       mobileNumber: formData.mobileNumber,
-      doj: formData.dob,
+      doj: formData.doj,
       serviceId: parseInt(formData.serviceId),
       packageId: parseInt(formData.packageId),
-      branchId: parseInt(formData.branchId), // 👈 Added
+      branchId: parseInt(formData.branchId),
       packageMonths: formData.packageMonths,
       packageAmount: formData.packageAmount,
       balanceAmount: formData.packageAmount,
@@ -201,20 +204,58 @@ const CandidateEnrollment = () => {
       fingerPrintID: fingerprintId,
       isActive: formData.isActive,
       createdDate: new Date().toISOString().slice(0, 10),
+      role: localStorage.getItem("userRole"), // "trainer" or "admin"
     };
 
+    await axios.post("/AddOrUpdateCandidate", payload);
+
+    alert("Candidate added successfully");
+
+    // ✅ Reset form and state
+    setFormData({
+      name: "",
+      gender: "",
+      address: "",
+      mobileNumber: "",
+      doj: "",
+      serviceId: "",
+      packageId: "",
+      branchId: "",
+      packageMonths: "",
+      packageAmount: "",
+      fromDate: "",
+      toDate: "",
+      paymentStatus: "Pending",
+      isActive: true,
+    });
+    setFingerprintId("");
+    setSelectedCandidateId(null); // If you're tracking this
+    setIsRenewal(false);         // If renewal radio is being reset
+    setShowModal(false);         // If you're using a modal
+  } catch (err) {
+    console.error(err);
+    alert("Error adding candidate");
+  }
+  };
+
+  const handleDeleteCandidate = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this candidate?"
+    );
+    if (!confirmDelete) return;
+
     try {
-      await axios.post(`${baseURL}/AddOrUpdateCandidate`, payload);
-      setCandidates([...candidates, payload]);
-      handleClose();
-    } catch {
-      alert("Failed to save candidate to database");
+      await axios.delete(`${baseURL}/DeleteCandidate/${id}`);
+      setCandidates(candidates.filter((c) => c.candidateId !== id));
+    } catch (err) {
+      alert("❌ Failed to delete candidate");
     }
   };
 
   const handleOpen = () => {
     localStorage.setItem("currentMode", "enrollment");
 
+    setIsEditMode(false);
     setShowModal(true);
     setStep(0);
     setNewCandidateId(generateCandidateId());
@@ -344,6 +385,7 @@ const CandidateEnrollment = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, name: e.target.value })
                         }
+                        required={!isEditMode}
                       />
                     </Form.Group>
                   </Col>
@@ -376,6 +418,7 @@ const CandidateEnrollment = () => {
                             mobileNumber: e.target.value,
                           })
                         }
+                        required={!isEditMode}
                       />
                     </Form.Group>
                   </Col>
@@ -391,6 +434,7 @@ const CandidateEnrollment = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, address: e.target.value })
                         }
+                        required={!isEditMode}
                       />
                     </Form.Group>
                   </Col>
@@ -455,6 +499,7 @@ const CandidateEnrollment = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, dob: e.target.value })
                         }
+                        required={!isEditMode}
                       />
                     </Form.Group>
                   </Col>
@@ -482,6 +527,7 @@ const CandidateEnrollment = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, branchId: e.target.value })
                         }
+                        required={!isEditMode}
                       >
                         <option value="">Select branch</option>
                         {branches.map((b) => (
@@ -492,15 +538,17 @@ const CandidateEnrollment = () => {
                       </Form.Select>
                     </Form.Group>
                   </Col>
-                  <Col>
-                    <Form.Group>
-                      <Form.Label>Fingerprint ID</Form.Label>
-                      <Form.Control
-                        value={fingerprintId || "Loading..."}
-                        disabled
-                      />
-                    </Form.Group>
-                  </Col>
+                  {!isEditMode && (
+                    <Col>
+                      <Form.Group>
+                        <Form.Label>Fingerprint ID</Form.Label>
+                        <Form.Control
+                          value={fingerprintId || "Loading..."}
+                          disabled
+                        />
+                      </Form.Group>
+                    </Col>
+                  )}
                 </Row>
               </Form>
             )}
@@ -532,6 +580,7 @@ const CandidateEnrollment = () => {
                 <th>From</th>
                 <th>To</th>
                 <th>Payment Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -561,7 +610,7 @@ const CandidateEnrollment = () => {
                       <td>
                         <span
                           className={`badge ${
-                            cand.paymentStatus === "Paid"
+                            cand.paymentStatus === "Completed"
                               ? "bg-success"
                               : cand.paymentStatus === "Pending"
                               ? "bg-warning text-dark"
@@ -570,6 +619,25 @@ const CandidateEnrollment = () => {
                         >
                           {cand.paymentStatus}
                         </span>
+                      </td>
+                      <td>
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => handleEditCandidate(cand)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() =>
+                            handleDeleteCandidate(cand.candidateId)
+                          }
+                        >
+                          Delete
+                        </Button>
                       </td>
                     </tr>
                   )

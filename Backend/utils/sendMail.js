@@ -6,8 +6,8 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "vimalajames2204@gmail.com",
-    pass: "rxqw mgbr ozkg wjhp", // App password
+    user: "amplefit2802@gmail.com",
+    pass: "xefo mwae zqqb fziy", // App password
   },
 });
 
@@ -17,12 +17,12 @@ const ADMIN_EMAIL = "tarunsivakumar03@gmail.com";
 const sendLoginNotificationToAdmin = async (login) => {
   try {
     const mailOptions = {
-      from: '"GymManagement" <vimalajames2204@gmail.com>',
+      from: '"GymManagement" <amplefit2802@gmail.com>',
       to: ADMIN_EMAIL,
       subject: "Trainer Login Notification",
       html: `
         <h2>Trainer Login Alert 🚨</h2>
-        <p><strong>Trainer Name:</strong> ${login.UserName}</p>
+        <p><strong>Trainer Name:</strong> ${login.userName}</p>
         <p><strong>Login ID:</strong> ${login.LoginId}</p>
         <p><strong>Login Time:</strong> ${new Date().toLocaleString()}</p>
       `,
@@ -39,7 +39,7 @@ const sendLoginNotificationToAdmin = async (login) => {
 const sendCandidateEnrollmentNotification = async (candidate) => {
   try {
     const mailOptions = {
-      from: '"GymManagement" <vimalajames2204@gmail.com>',
+      from: '"GymManagement" <amplefit2802@gmail.com>',
       to: ADMIN_EMAIL,
       subject: "New Candidate Enrolled by Trainer",
       html: `
@@ -68,7 +68,7 @@ const sendCandidateEnrollmentNotification = async (candidate) => {
 const sendPaymentNotificationToAdmin = async (payment) => {
   try {
     const mailOptions = {
-      from: '"GymManagement" <vimalajames2204@gmail.com>',
+      from: '"GymManagement" <amplefit2802@gmail.com>',
       to: ADMIN_EMAIL,
       subject: "Payment Collected by Trainer 💰",
       html: `

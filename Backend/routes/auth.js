@@ -97,6 +97,7 @@ router.post("/Bio/Login", async (req, res) => {
     // Optional: Notify admin if a trainer logs in
     if (role.toLowerCase() === "trainer") {
       try {
+        console.log("📥 Trainer login detected:", userName);
         await sendLoginNotificationToAdmin(userName);
       } catch (mailErr) {
         console.warn("Failed to send login notification:", mailErr.message);

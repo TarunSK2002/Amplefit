@@ -1,133 +1,121 @@
-// const { SerialPort } = require("serialport");
-// const { ReadlineParser } = require("@serialport/parser-readline");
-
-// let port = null;
-// let parser = null;
-
-// async function setupSerial() {
-//   try {
-//     // Get all available ports
-//     const ports = await SerialPort.list();
-
-//     // Try to find a port that looks like an Arduino
-//     const arduinoPort = ports.find((p) =>
-//       p.manufacturer && p.manufacturer.toLowerCase().includes("arduino")
-//     );
-
-//     // Fallback: pick the first available port
-//     const selectedPort = arduinoPort || ports[0];
-
-//     if (!selectedPort) {
-//       console.log("❌ No serial ports found.");
-//       return;
-//     }
-
-//     console.log(`✅ Using serial port: ${selectedPort.path}`);
-
-//     port = new SerialPort({
-//       path: selectedPort.path,
-//       baudRate: 9600,
-//     });
-
-//     parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
-
-//     port.on("open", () => {
-//       console.log("✅ Serial Port Opened at", selectedPort.path);
-//     });
-
-//     port.on("error", (err) => {
-//       console.error("💥 Serial Port Error:", err.message);
-//     });
-
-//     parser.on("data", (data) => {
-//       console.log("📩 From Arduino:", data.trim());
-//     });
-
-//   } catch (error) {
-//     console.error("❌ Failed to setup serial port:", error);
-//   }
-// }
-
-// // Function to send data to Arduino
-// function sendToArduino(message) {
-//   if (port && port.isOpen) {
-//     port.write(message + "\n", (err) => {
-//       if (err) console.error("⚠️ Error sending to Arduino:", err.message);
-//       else console.log("➡️ Sent to Arduino:", message);
-//     });
-//   } else {
-//     console.warn("⚠️ Serial port not open. Cannot send:", message);
-//   }
-// }
-
-// module.exports = {
-//   setupSerial,
-//   sendToArduino,
-// };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// serial.js
+// utils/serial.js
 const { SerialPort } = require("serialport");
 
-let serialPort;
+async function listAvailablePorts() {
+  try {
+    const ports = await SerialPort.list();
 
-async function initializeSerialPort() {
-  const ports = await SerialPort.list();
+    console.log("🔌 Available Serial Ports:");
+    ports.forEach((port, index) => {
+      console.log(`${index + 1}. ${port.path}`);
+      console.log(`   Manufacturer: ${port.manufacturer}`);
+      console.log(`   Serial Number: ${port.serialNumber}`);
+      console.log(`   PnP ID: ${port.pnpId}`);
+      console.log(`   Friendly Name: ${port.friendlyName}`);
+      console.log(`   -----------------------------------`);
+    });
 
-  const selectedPort = ports.find(port =>
-    port.manufacturer?.toLowerCase().includes("arduino") ||
-    port.manufacturer?.toLowerCase().includes("wch") ||
-    port.path.toLowerCase().includes("com")
+    return ports;
+  } catch (err) {
+    console.error("❌ Error listing ports:", err.message);
+    return [];
+  }
+}
+
+async function openArduinoPort() {
+  const ports = await listAvailablePorts();
+
+  const arduinoPortInfo = ports.find(
+    (port) =>
+      port.path.includes("COM") &&
+      (port.manufacturer?.toLowerCase().includes("arduino") ||
+        port.friendlyName?.toLowerCase().includes("wch") ||
+        port.vendorId || port.productId) // broaden match
   );
 
-  if (!selectedPort) {
-    console.error("❌ No valid serial port found.");
-    return null;
+  if (!arduinoPortInfo) {
+    throw new Error("❌ No Arduino-compatible device found.");
   }
 
-  serialPort = new SerialPort({
-    path: selectedPort.path,
+  const port = new SerialPort({
+    path: arduinoPortInfo.path,
     baudRate: 9600,
     autoOpen: true,
   });
 
-  serialPort.on("open", () => {
-    console.log(`✅ Serial Port Opened at ${selectedPort.path}`);
+  port.on("open", () => {
+    console.log(`✅ Serial Port Opened at ${arduinoPortInfo.path}`);
   });
 
-  serialPort.on("error", err => {
-    console.error("Serial Port Error:", err.message);
+  port.on("error", (err) => {
+    console.error("❌ Serial Port Error:", err.message);
   });
 
-  return serialPort;
+  return port;
 }
 
-function getSerialPort() {
-  return serialPort;
-}
+module.exports = { listAvailablePorts, openArduinoPort };
 
-module.exports = { initializeSerialPort, getSerialPort };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// const { SerialPort } = require("serialport");
+
+// let serialPort;
+
+// async function initializeSerialPort() {
+//   const ports = await SerialPort.list();
+
+//   console.log("🔌 Available Ports:", ports.map(p => `${p.path} - ${p.manufacturer || "unknown"}`));
+
+//   const selectedPort = ports.find(port =>
+//     (port.manufacturer && port.manufacturer.toLowerCase().includes("wch")) || // Matches "wch.cn"
+//     (port.path && port.path.toLowerCase().includes("com7"))                   // Optional: hardcode COM7 as fallback
+//   );
+
+//   if (!selectedPort) {
+//     console.error("❌ No valid serial port found.");
+//     return null;
+//   }
+
+//   serialPort = new SerialPort({
+//     path: selectedPort.path,
+//     baudRate: 9600,
+//     autoOpen: true,
+//   });
+
+  // serialPort.on("open", () => {
+  //   console.log(`✅ Serial Port Opened at ${selectedPort.path}`);
+  //   if (serialPort && serialPort.isOpen) {
+  // console.log("⚠️ Serial port already open.");
+  // return serialPort;
+// }
+
+//   });
+
+//   serialPort.on("error", err => {
+//     console.error("❌ Serial Port Error:", err.message);
+//   });
+
+//   return serialPort;
+// }
+  
+// function getSerialPort() {
+//   return serialPort;
+// }
+
+// module.exports = { initializeSerialPort, getSerialPort };
